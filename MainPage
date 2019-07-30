@@ -1,0 +1,78 @@
+<apex:page standardController="Account" extensions="PowerBIController" action="{!redirectOnCallback}" showHeader="false">
+<html>
+<head>
+</head>
+<apex:includeScript value="{!$Resource.PBIJS}"/>
+    <apex:outputPanel rendered="{!NOT(hasToken)}"><a href='{!authUrl}'>Login</a></apex:outputPanel>
+    <apex:outputPanel rendered="{!hasToken}">Already has token</apex:outputPanel>
+<apex:form >
+<apex:actionFunction name="refreshAccessToken" action="{!refreshAccessToken}"/>
+</apex:form>
+<div id="myReport" style="height: 800px;"/>
+<script>
+let accessToken = '{!PBIaccess_token}';
+let refreshToken = '{!PBIrefresh_token}';
+let expires_on = '{!PBIexpires_on}';
+let validateResult = '{!validateResult}';
+let selectedReport = '96dd1f90-c442-415f-a8f3-5ccb906621e9'; 
+let AccountId = '{!$CurrentPage.parameters.Id}';
+window.onload = function() {
+alert("Account ID is = " +AccountId);
+if(window.location.href.includes('code='))
+{
+    window.close();
+    window.opener.location.reload();
+}
+let expiresOn = parseInt(expires_on);
+let currentTime = Date.now()/1000;
+if(expiresOn <= currentTime || !accessToken)
+    { 
+        var loginWindow = window.open('{!authUrl}','Login','width=250,height=900,0,status=0');
+        
+    } else if((expiresOn - 2000) <= currentTime)
+           {
+                refreshAccessToken();
+           }
+if (AccountId){
+var filter = {
+      $schema: "http://powerbi.com/product/schema#basic",
+        target: {
+        table: "DIM_ACCOUNT",
+        column: "ACCOUNT_NO"
+        },
+    operator: "In",
+    values: [AccountId]
+    };
+}
+else{
+	var filter = {
+      $schema: "http://powerbi.com/product/schema#basic",
+        target: {
+        table: "DIM_ACCOUNT",
+        column: "STATUS_CODE"
+        },
+    operator: "In",
+    values: ['A']
+    };
+}
+var embedConfiguration = {
+    type: 'report',
+    id: selectedReport,
+    embedUrl: 'https://app.powerbi.com/reportEmbed',
+    filters:[filter],
+    settings: {
+            navContentPaneEnabled: true,
+            filterPaneEnabled: false,
+        }
+};
+powerbi.accessToken = '{!PBIaccess_token}';
+var element = document.getElementById('myReport');
+var report = powerbi.embed(element, embedConfiguration);
+}
+window.onbeforeclose = function()
+{
+    window.opener.update(window.location.href);
+}
+</script>
+</html>
+</apex:page>
